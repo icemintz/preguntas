@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Preguntas</title>
+    
+    <!-- PWA manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- iOS PWA support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Preguntas">
+    
+    <!-- Theme color -->
+    <meta name="theme-color" content="#3498db">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        .flashcard-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 20px);
+        }
+
+        .card-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            margin-bottom: 20px;
+            overflow-y: auto;
+            min-height: 0;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 10px;
+            transition: background-color 0.2s ease;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .card-content:hover {
+            background-color: #f8f9fa;
+        }
+
+        .question,
+        .answer {
+            font-size: 68px;
+            line-height: 1.4;
+            color: #333;
+            word-wrap: break-word;
+        }
+
+        .question {
+            font-weight: bold;
+            color: #2c3e50;
+            text-align: left;
+        }
+
+        .answer {
+            color: #27ae60;
+            font-weight: 500;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #ecf0f1;
+            text-align: left;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-shrink: 0;
+            margin-bottom: 15px;
+        }
+
+        .filter-toggle {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            min-height: 45px;
+            transition: background-color 0.3s ease;
+        }
+
+        .filter-toggle:hover {
+            background-color: #2980b9;
+        }
+
+        .filter-toggle.active {
+            background-color: #e74c3c;
+        }
+
+        .filter-toggle.active:hover {
+            background-color: #c0392b;
+        }
+
+        .nav-btn {
+            background-color: #95a5a6;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            margin-bottom: 100px;
+            font-size: 24px;
+            border-radius: 10px;
+            cursor: pointer;
+            min-height: 70px;
+            min-width: 120px;
+        }
+
+        .nav-btn:hover {
+            background-color: #7f8c8d;
+        }
+
+        .nav-btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .card-counter {
+            font-size: 46px;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 600px) {
+            .flashcard-container {
+                padding: 15px;
+            }
+
+            .question,
+            .answer {
+                font-size: 40px;
+            }
+
+            .nav-btn {
+                font-size: 16px;
+                padding: 12px 20px;
+            }
+        }
+
+        @media (max-width: 400px) {
+
+            .question,
+            .answer {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="flashcard-container">
+        <div class="card-counter">
+            <span id="current-card">1</span> / <span id="total-cards">0</span>
+        </div>
+
+        <div class="card-content" onclick="revealAnswer()">
+            <div class="question" id="question-text"></div>
+            <div class="answer hidden" id="answer-text"></div>
+        </div>
+
+        <div class="navigation">
+            <button class="nav-btn" id="prev-btn" onclick="previousCard()">◀</button>
+            <button class="nav-btn" id="next-btn" onclick="nextCard()">▶</button>
+        </div>
+
+        <button class="filter-toggle" id="filter-btn" onclick="toggleFilter()">Modo Nombres</button>
+    </div>
+
+
+    <script>
+
+        const flashcards = [
+            {
+                "question": "¿Cuál es la ley suprema de la nación?",
+                "answer": "La Constitución"
+            },
+            {
+                "question": "¿Qué hace la Constitución?",
+                "answer": "Establece el gobiernodefine el gobierno, protege los derechos básicos de los ciudadanos estadounidenses"
+            },
+            {
+                "question": "¿Cuáles son las primeras tres palabras de la Constitución que contienen la idea del autogobierno?",
+                "answer": "Nosotros, el pueblo"
+            },
+            {
+                "question": "¿Qué es una enmienda?",
+                "answer": "Un cambio o una adición a la Constitución"
+            },
+            {
+                "question": "¿Con qué nombre se conocen las primeras diez enmiendas a la Constitución?",
+                "answer": "La Carta de Derechos"
+            },
+            {
+                "question": "¿Cuál es un derecho o libertad garantizado por la Primera Enmienda?",
+                "answer": "Cualquiera de estos:\nexpresión\nreligión\nreunión\nprensa\npeticionar al gobierno"
+            },
+            {
+                "question": "¿Cuántas enmiendas tiene la Constitución?",
+                "answer": "Veintisiete (27)"
+            },
+            {
+                "question": "¿Qué hizo la Declaración de la Independencia?",
+                "answer": "Declaró nuestra independencia de Gran Bretaña"
+            },
+            {
+                "question": "¿Cuáles son dos derechos en la Declaración de la Independencia?",
+                "answer": "- La vida\n- La libertad\n- La búsqueda de la felicidad"
+            },
+            {
+                "question": "¿En qué consiste la libertad de religión?",
+                "answer": "Se puede practicar cualquier religión o no practicar ninguna."
+            },
+            {
+                "question": "¿Cuál es el sistema económico de Estados Unidos?",
+                "answer": "Economía capitalista"
+            },
+            {
+                "question": "¿En qué consiste el 'estado de derecho'? Tambien escrita como \"regla de la ley\"",
+                "answer": "- Todos deben obedecer la ley\n- Los líderes deben obedecer la ley\n- El gobierno debe obedecer la ley\n- Nadie está por encima de la ley."
+            },
+            {
+                "question": "Nombre una rama o parte del gobierno.",
+                "answer": "- Congreso\n- Poder Legislativo\n- Presidente\n- Poder Ejecutivo\n- Poder Judicial"
+            },
+            {
+                "question": "¿Qué evita que una rama del gobierno se vuelva demasiado poderosa?",
+                "answer": "- Pesos y contrapesos\n- Separación de poderes"
+            },
+            {
+                "question": "¿Quién está a cargo de la rama ejecutiva?",
+                "answer": "El presidente"
+            },
+            {
+                "question": "¿Quién crea las leyes federales?",
+                "answer": "El Congreso, el Senado y la Cámara de Representantes"
+            },
+            {
+                "question": "¿Cuáles son las dos partes que integran el Congreso de Estados Unidos?",
+                "answer": "El Senado y la Cámara de Representantes"
+            },
+            {
+                "question": "¿Cuántos senadores hay en Estados Unidos?",
+                "answer": "Cien (100)"
+            },
+            {
+                "question": "¿De cuántos años es el término de elección de un senador de Estados Unidos?",
+                "answer": "Seis (6)"
+            },
+            {
+                "question": "* ¿Quién es uno de los senadores actuales del estado donde usted vive?",
+                "answer": "Rick Scott",
+                "person": true
+            },
+            {
+                "question": "¿Cuántos miembros votantes tiene la Cámara de Representantes?",
+                "answer": "435"
+            },
+            {
+                "question": "¿De cuántos años es el término de elección de un representante de Estados Unidos?",
+                "answer": "Dos (2)"
+            },
+            {
+                "question": "Mencione el nombre de su representante en Estados Unidos",
+                "answer": "Byron Donalds (pronunciado Bayron Donalds)",
+                "person": true
+            },
+            {
+                "question": "¿A quiénes representa un senador de Estados Unidos?",
+                "answer": "A todas las personas del estado"
+            },
+            {
+                "question": "¿Por qué tienen algunos estados más representantes que otros?",
+                "answer": "Debido a la población del estado"
+            },
+            {
+                "question": "¿Por cuántos años elegimos al presidente?",
+                "answer": "4 años"
+            },
+            {
+                "question": "¿En qué mes votamos por un nuevo presidente?",
+                "answer": "Noviembre"
+            },
+            {
+                "question": "Cómo se llama el presidente actual de Estados Unidos",
+                "answer": "Donald Trump"
+            },
+            {
+                "question": "Como se llama el vicepresidente?",
+                "answer": "Vance",
+                "person": true
+            },
+            {
+                "question": "¿Si el presidente ya no puede cumplir sus funciones, quién se convierte en presidente?",
+                "answer": "El vicepresidente"
+            },
+            {
+                "question": "Si tanto el presidente como el vicepresidente ya no pueden cumplir sus funciones, ¿quién se convierte en presidente?",
+                "answer": "El portavoz de la Cámara de Representantes"
+            },
+            {
+                "question": "¿Quién es el comandante en jefe de las Fuerzas Armadas?",
+                "answer": "El presidente"
+            },
+            {
+                "question": "¿Quién veta los proyectos de ley?",
+                "answer": "El presidente"
+            },
+            {
+                "question": "¿Quién firma los proyectos de ley para convertirlos en ley?",
+                "answer": "El presidente"
+            },
+            {
+                "question": "¿Qué hace el gabinete del presidente?",
+                "answer": "Asesora al presidente"
+            },
+            {
+                "question": "¿Cuáles son dos puestos a nivel de gabinete?",
+                "answer": "- Secretario de Agricultura\n- Secretario de Comercio\n- Secretario de Defensa\n- Secretario de Educación\n- Secretario de Seguridad Nacional\n- Secretario del Interior\n- Secretario del Trabajo\n- Secretario de Estado\n- Secretario de Transporte"
+            },
+            {
+                "question": "¿Qué hace la Rama Judicial?",
+                "answer": "- Revisa las leyes\n- Explica las leyes\n- Resuelve disputas\n- Decide si una ley va en contra de la Constitución"
+            },
+            {
+                "question": "¿Cuál es la corte (o tribunal) más importante de Estados Unidos?",
+                "answer": "Corte suprema"
+            },
+            {
+                "question": "¿Cuántos jueces hay en la Corte Suprema?",
+                "answer": "9"
+            },
+            {
+                "question": "¿Cuál es un poder del gobierno federal?",
+                "answer": "- Imprimir dinero\n- Declarar la guerra"
+            },
+            {
+                "question": "¿Cuál es un poder de los estados?",
+                "answer": "- Proporcionar escuelas y educación\n- Otorgar licencias de conducir"
+            },
+            {
+                "question": "* ¿Quién es el juez principal actual de la Corte Suprema de Estados Unidos?",
+                "answer": "John Roberts"
+            },
+            {
+                "question": "¿Quién es el gobernador actual de su estado?",
+                "answer": "Ron DeSantis",
+                "name": true
+            },
+            {
+                "question": "¿Cuál es la capital de su estado?",
+                "answer": "Tallahassee"
+            },
+            {
+                "question": "¿Cuáles son los dos principales partidos políticos de Estados Unidos?",
+                "answer": "Demócrata y Republicano"
+            },
+            {
+                "question": "¿Cuál es el partido político del presidente actual?",
+                "answer": "Republicano"
+            },
+            {
+                "question": "* ¿Cómo se llama el portavoz actual de la Cámara de Representantes?",
+                "answer": "Mike Johnson",
+                "person": true
+            },
+            {
+                "question": "Existen cuatro enmiendas a la Constitución sobre quién puede votar. Describa una de ellas.",
+                "answer": "- Ciudadanos de dieciocho 18 años en adelante pueden votar"
+            },
+            {
+                "question": "¿Cuál es una responsabilidad que corresponde sólo a los ciudadanos de Estados Unidos?",
+                "answer": "- Votar en una elección federal\n- Participar en un jurado"
+            },
+            {
+                "question": "¿Cuál es un derecho que pueden ejercer sólo los ciudadanos de Estados Unidos?",
+                "answer": "- Votar en una elección federal\n- Postularse a un cargo político federal"
+            },
+            {
+                "question": "¿Cuáles son dos derechos que pueden ejercer todas las personas que viven en Estados Unidos?",
+                "answer": "- Libertad de expresión\n- Libertad de religión"
+            },
+            {
+                "question": "¿A qué demostramos nuestra lealtad cuando prestamos el Juramento de Lealtad (Pledge of Allegiance)?",
+                "answer": "A Estados Unidos y la bandera"
+            },
+            {
+                "question": "¿Cuál es una promesa que usted hace cuando se convierte en ciudadano de Estados Unidos?",
+                "answer": "- Renunciar a su lealtad a otros países\n- Defender la Constitución y las leyes de Estados Unidos\n- Obedecer las leyes de Estados Unidos"
+            },
+            {
+                "question": "¿Cuántos años tienen que tener los ciudadanos para votar por el presidente?*",
+                "answer": "18"
+            },
+            {
+                "question": "Cuáles son dos maneras mediante las cuales los ciudadanos estadounidenses pueden participar en su democracia?",
+                "answer": "- Votar\n- Afiliarse a un partido político\n- Ayudar en una campaña política\n- Postularse a un cargo político"
+            },
+            {
+                "question": "Cuál es la fecha límite para enviar la declaración federal de impuestos sobre ingresos?",
+                "answer": "El 15 de abril"
+            },
+            {
+                "question": "Cuándo deben inscribirse todos los hombres en el Servicio Selectivo?",
+                "answer": "- A los dieciocho (18) años\n- Entre los dieciocho (18) y veintiséis (26) años de edad"
+            },
+            {
+                "question": "¿Cuál es una razón por la que los colonos vinieron a América?",
+                "answer": "- Libertad\n- Libertad política\n- Libertad religiosa\n- Oportunidad económica\n- Para practicar su religión\n- Para huir de la persecución"
+            },
+            {
+                "question": "¿Quiénes vivían en lo que hoy conocemos como Estados Unidos antes de la llegada de los europeos?",
+                "answer": "Nativos estadounidenses"
+            },
+            {
+                "question": "Qué grupo de personas fue traído a Estados Unidos y vendidos como esclavos?",
+                "answer": "Gente de África"
+            },
+            {
+                "question": "Por qué lucharon los colonos contra los británicos?",
+                "answer": "- Debido a los impuestos altos (impuestos sin representación)\n\n- El ejército británico se alojaba en sus casas (alojándose, acuartelándose)\n\n- Porque no tenían gobierno propio"
+            },
+            {
+                "question": "Quién escribió la Declaración de Independencia?",
+                "answer": "Thomas Jefferson",
+                "name": true
+            },
+            {
+                "question": "Cuándo fue adoptada la Declaración de Independencia?",
+                "answer": "El 4 de julio de 1776"
+            },
+            {
+                "question": "Nombre tres de los estados originales",
+                "answer": "- Nueva York\n- Nueva Jersey\n- Carolina del norte\n- Carolina del sur\n- Virginia"
+            },
+            {
+                "question": "Qué ocurrió en la Convención Constitucional?",
+                "answer": "Se redactó la Constitución"
+            },
+            {
+                "question": "¿Cuándo fue redactada la Constitución?",
+                "answer": "1787"
+            },
+            {
+                "question": "Los escritos conocidos como \"Los Documentos Federalistas\" respaldaron la aprobación de la Constitución de Estados Unidos. Nombre uno de sus autores.",
+                "answer": "James Madison\nAlexander Hamilton"
+            },
+            {
+                "question": "Mencione una razón por la que es famoso Benjamin Franklin.",
+                "answer": "- Diplomático estadounidense\n\n- Fundó las primeras bibliotecas gratuitas"
+            },
+            {
+                "question": "¿Quién se conoce como el \"Padre de Nuestra Nación\"?",
+                "answer": "George Washington",
+                "person": true
+            },
+            {
+                "question": "Quién fue el primer presidente?",
+                "answer": "George Washington",
+                "person": true
+            },
+            {
+                "question": "¿Qué territorio compró Estados Unidos a Francia en 1803?",
+                "answer": "Luisiana"
+            },
+            {
+                "question": "Mencione una guerra en la que combatió Estados Unidos durante los años 1800.",
+                "answer": "Guerra civil"
+            },
+            {
+                "question": "Cuál es el nombre de la guerra entre el Norte y el Sur de Estados Unidos?",
+                "answer": "Guerra civil"
+            },
+            {
+                "question": "Mencione un problema que condujo a la Guerra Civil.",
+                "answer": "La esclavitud"
+            },
+            {
+                "question": "Cuál fue una cosa importante que hizo Abraham Lincoln?",
+                "answer": "Liberó a los esclavos"
+            },
+            {
+                "question": "Qué hizo la Proclamación de la Emancipación?",
+                "answer": "Liberó a los esclavos"
+            },
+            {
+                "question": "Qué hizo Susan B. Anthony?",
+                "answer": "Luchó por los derechos de la mujer",
+                "person": true
+            },
+            {
+                "question": "Mencione una guerra del siglo 20 en la que combatió Estados Unidos",
+                "answer": "- Primera guerra mundial\n- Segunda guerra mundial"
+            },
+            {
+                "question": "¿Quién era el presidente durante la Primera Guerra Mundial?",
+                "answer": "Woodrow Wilson",
+                "person": true
+            },
+            {
+                "question": "Quién era presidente durante la Gran Depresión y la Segunda Guerra Mundial?",
+                "answer": "Franklin Roosevelt",
+                "person": true
+            },
+            {
+                "question": "Contra qué países peleó Estados Unidos en la Segunda Guerra Mundial?",
+                "answer": "Japón, Alemania, e Italia"
+            },
+            {
+                "question": "Antes de ser presidente, Eisenhower era general. ¿En qué guerra participó?",
+                "answer": "Segunda guerra mundial"
+            },
+            {
+                "question": "Durante la Guerra Fría, ¿cuál era la principal preocupación de Estados Unidos?",
+                "answer": "Comunismo"
+            },
+            {
+                "question": "Qué movimiento trató de poner fin a la discriminación racial?",
+                "answer": "El movimiento de los derechos civiles"
+            },
+            {
+                "question": "Qué hizo Martin Luther King, Jr.?",
+                "answer": "Luchó por los derechos civiles"
+            },
+            {
+                "question": "Qué suceso de gran magnitud ocurrió el 11 de septiembre de 2001 en Estados Unidos?",
+                "answer": "Terroristas atacaron a Estados Unidos."
+            },
+            {
+                "question": "Mencione una tribu de indios estadounidenses en Estados Unidos",
+                "answer": "Seminoles"
+            },
+            {
+                "question": "Mencione uno de los dos ríos más largos en Estados Unidos",
+                "answer": "- Río Missouri\n- Río Mississippi"
+            },
+            {
+                "question": "Qué océano está en la costa oeste de Estados Unidos?",
+                "answer": "Pacífico"
+            },
+            {
+                "question": "Qué océano está en la costa este de Estados Unidos?",
+                "answer": "Atlántico"
+            },
+            {
+                "question": "Dé el nombre de un territorio de Estados Unidos",
+                "answer": "Puerto Rico"
+            },
+            {
+                "question": "Mencione un estado que tiene frontera con Canadá.",
+                "answer": "Nueva York"
+            },
+            {
+                "question": "Mencione un estado que tiene frontera con México.",
+                "answer": "Texas"
+            },
+            {
+                "question": "Cuál es la capital de Estados Unidos?",
+                "answer": "Washington DC"
+            },
+            {
+                "question": "Dónde está la Estatua de la Libertad?",
+                "answer": "Nueva York"
+            },
+            {
+                "question": "Por qué hay 13 franjas en la bandera?",
+                "answer": "Porque representan las 13 colonias originales"
+            },
+            {
+                "question": "¿Por qué hay 50 estrellas en la bandera?",
+                "answer": "Cada estrella representa uno de los estados"
+            },
+            {
+                "question": "Cómo se llama el himno nacional?",
+                "answer": "The Star Spangled Banner"
+            },
+            {
+                "question": "Cuándo celebramos el Día de la Independencia?",
+                "answer": "4 de Julio"
+            },
+            {
+                "question": "Mencione dos días feriados nacionales de Estados Unidos",
+                "answer": "- Día de Año Nuevo\n- Día de Martin Luther King, Jr.\n- Día de los Presidentes\n- Día de la Recordación\n- Día de la Independencia\n- Día del Trabajo\n- Día de los Veteranos\n- Día de Acción de Gracias\n- Día de Navidad"
+            }
+        ];
+
+        let currentCardIndex = 0;
+        let shuffledCards = [];
+        let isNameMode = false;
+        let allCards = [];
+        let nameCards = [];
+
+        // Shuffle array function
+        function shuffleArray(array) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // Initialize the app
+        function init() {
+            allCards = shuffleArray(flashcards);
+            nameCards = shuffleArray(flashcards.filter(card => card.name === true || card.person === true));
+
+            shuffledCards = allCards;
+            document.getElementById('total-cards').textContent = shuffledCards.length;
+            showCard();
+            updateNavigation();
+        }
+
+        // Show current card
+        function showCard() {
+            const card = shuffledCards[currentCardIndex];
+            document.getElementById('question-text').textContent = card.question;
+            document.getElementById('answer-text').innerHTML = card.answer.replace(/\n/g, '<br>');
+            document.getElementById('current-card').textContent = currentCardIndex + 1;
+
+            // Hide answer
+            document.getElementById('answer-text').classList.add('hidden');
+        }
+
+        // Reveal answer
+        function revealAnswer() {
+            document.getElementById('answer-text').classList.remove('hidden');
+        }
+
+        // Navigate to next card
+        function nextCard() {
+            if (currentCardIndex < shuffledCards.length - 1) {
+                currentCardIndex++;
+            } else {
+                // Start over from the beginning with reshuffled cards
+                currentCardIndex = 0;
+                if (isNameMode) {
+                    shuffledCards = shuffleArray(nameCards);
+                } else {
+                    shuffledCards = shuffleArray(allCards);
+                }
+            }
+            showCard();
+            updateNavigation();
+        }
+
+        // Navigate to previous card
+        function previousCard() {
+            if (currentCardIndex > 0) {
+                currentCardIndex--;
+                showCard();
+                updateNavigation();
+            }
+        }
+
+        // Update navigation buttons
+        function updateNavigation() {
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+
+            prevBtn.disabled = currentCardIndex === 0;
+
+            if (currentCardIndex === shuffledCards.length - 1) {
+                nextBtn.innerHTML = '<span style="font-size: 48px;">↻</span>';
+                nextBtn.disabled = false;
+            } else {
+                nextBtn.textContent = '▶';
+                nextBtn.disabled = false;
+            }
+        }
+
+        // Toggle between full set and name-only questions
+        function toggleFilter() {
+            const filterBtn = document.getElementById('filter-btn');
+
+            if (isNameMode) {
+                // Switch to full set
+                isNameMode = false;
+                shuffledCards = allCards;
+                filterBtn.textContent = 'Modo Nombres';
+                filterBtn.classList.remove('active');
+            } else {
+                // Switch to names only
+                isNameMode = true;
+                shuffledCards = nameCards;
+                filterBtn.textContent = 'Modo Completo';
+                filterBtn.classList.add('active');
+            }
+
+            // Reset to first card and update display
+            currentCardIndex = 0;
+            document.getElementById('total-cards').textContent = shuffledCards.length;
+            showCard();
+            updateNavigation();
+        }
+
+        // Register service worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('sw.js')
+                    .then(function(registration) {
+                        console.log('SW registered: ', registration);
+                    })
+                    .catch(function(registrationError) {
+                        console.log('SW registration failed: ', registrationError);
+                    });
+            });
+        }
+
+        // Start the app when page loads
+        window.onload = init;
+    </script>
+</body>
+
+</html>
